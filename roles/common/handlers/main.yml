@@ -1,0 +1,10 @@
+- name: restart timesyncd
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+
+- name: restart resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+    enabled: yes

@@ -1,0 +1,55 @@
+- name: Create service user
+  user:
+    name: "{{ nodeexp_user }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+  tags: [node_exporter]
+
+- name: Create work dir
+  file:
+    path: "{{ nodeexp_dir }}"
+    state: directory
+    owner: "{{ nodeexp_user }}"
+    group: "{{ nodeexp_user }}"
+    mode: "0755"
+  tags: [node_exporter]
+
+- name: Download node_exporter
+  get_url:
+    url: "{{ node_exporter_url }}"
+    dest: /tmp/node_exporter.tgz
+    mode: "0644"
+  tags: [node_exporter]
+
+- name: Unpack node_exporter
+  unarchive:
+    src: /tmp/node_exporter.tgz
+    dest: "{{ nodeexp_dir }}"
+    remote_src: yes
+    creates: "{{ nodeexp_dir }}/node_exporter-{{ node_exporter_version }}.linux-amd64"
+  tags: [node_exporter]
+
+- name: Link binary
+  file:
+    src: "{{ nodeexp_dir }}/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    state: link
+    force: true
+  tags: [node_exporter]
+
+- name: Install systemd unit
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    mode: "0644"
+  notify: restart node_exporter
+  tags: [node_exporter]
+
+- name: Ensure node_exporter is running
+  systemd:
+    name: node_exporter
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: [node_exporter]

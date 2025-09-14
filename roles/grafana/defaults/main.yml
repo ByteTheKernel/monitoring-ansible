@@ -1,0 +1,10 @@
+grafana_user: grafana_user
+grafana_dir: /srv/grafana
+grafana_port: 3000
+
+grafana_repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] http://mirror.yandex.ru/mirrors/packages.grafana.com/oss/deb stable main"
+
+node_exporter_full_rev: "41"
+node_exporter_full_url: "https://grafana.com/api/dashboards/1860/revisions/{{ node_exporter_full_rev }}/download"
+
+node_exporter_full_json: "{{ grafana_dir }}/dashboards/node-exporter-full-1860.json"

@@ -1,0 +1,74 @@
+- name: Create service user
+  user:
+    name: "{{ prom_user }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+  tags: [prometheus]
+
+- name: Create dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prom_user }}"
+    group: "{{ prom_user }}"
+    mode: "0755"
+  loop:
+    - "{{ prom_dir }}"
+    - "{{ prom_dir }}/data"
+    - "{{ prom_dir }}/config"
+  tags: [prometheus]
+
+- name: Download prometheus
+  get_url:
+    url: "{{ prometheus_url }}"
+    dest: /tmp/prometheus.tgz
+    mode: "0644"
+  tags: [prometheus]
+
+- name: Unpack prometheus
+  unarchive:
+    src: /tmp/prometheus.tgz
+    dest: "{{ prom_dir }}"
+    remote_src: yes
+    creates: "{{ prom_dir }}/prometheus-{{ prometheus_version }}.linux-amd64"
+  tags: [prometheus]
+
+- name: Link binaries
+  file:
+    src: "{{ prom_dir }}/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop: [prometheus, promtool]
+  tags: [prometheus]
+
+- name: Render prometheus.yml
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ prom_dir }}/config/prometheus.yml"
+    owner: "{{ prom_user }}"
+    group: "{{ prom_user }}"
+    mode: "0644"
+  tags: [prometheus]
+
+- name: promtool check
+  command: promtool check config {{ prom_dir }}/config/prometheus.yml
+  changed_when: false
+  tags: [prometheus]
+
+- name: Install systemd unit
+  template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    mode: "0644"
+  notify: restart prometheus
+  tags: [prometheus]
+
+- name: Ensure Prometheus service
+  systemd:
+    name: prometheus
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: [prometheus]

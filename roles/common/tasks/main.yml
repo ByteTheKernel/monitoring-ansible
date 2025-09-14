@@ -1,0 +1,91 @@
+- name: Set hostname
+  hostname:
+    name: "{{ hostname_fqdn }}"
+  tags: [common]
+
+- name: Ensure /etc/hosts/ has our FQDN and short name
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ hostname_fqdn }} {{ hostname_fqdn.split('.')[0] }}"
+    state: present
+    backup: yes
+  tags: [common]
+
+- name: Ensure ntp.ubuntu.com is not mapped to 127.0.0.1 in /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '.*ntp\.ubuntu\.com'
+    state: absent
+  tags: [common]
+
+- name: Enable & start timesyncd
+  systemd:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+  tags: [common]
+
+- name: Configure systemd-timesyncd via template
+  template:
+    src: timesyncd.conf.j2
+    dest: /etc/systemd/timesyncd.conf
+    mode: "0644"
+  tags: [common]
+
+- name: Restart systemd-resolved and systemd-timesyncd to pick new servers
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  loop:
+    - systemd-resolved
+    - systemd-timesyncd
+  tags: [common]
+
+- name: Enable NTP
+  command: timedatectl set-ntp true
+  changed_when: false
+  tags: [common]
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  notify: restart timesyncd
+  tags: [common]
+
+- name: Wait until NTP is synchronized
+  shell: timedatectl show -p NTPSynchronized --value
+  register: ntp_sync
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: ntp_sync.stdout == "yes"
+  tags: [common]
+
+- name: Sync hardware clock from system clock
+  command: hwclock -w
+  changed_when: false
+  tags: [common]
+
+- name: Install base packages
+  apt:
+    name: "{{ base_packages }}"
+    state: present
+    update_cache: yes
+  tags: [common]
+
+- name: apt update (verify)
+  apt:
+    update_cache: yes
+  tags: [common]
+
+- name: Show date/time (verify)
+  command: date
+  register: now
+  changed_when: false
+  tags: [common]
+
+- debug:
+    msg: "Current date/time: {{ now.stdout }}"
+  tags: [common]

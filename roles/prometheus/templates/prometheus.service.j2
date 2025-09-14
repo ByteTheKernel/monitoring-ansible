@@ -1,0 +1,20 @@
+[Unit]
+Description=Prometheus Service
+After=network.target
+
+[Service]
+User={{ prom_user }}
+Group={{ prom_user }}
+ExecStart=/usr/local/bin/prometheus \
+  --config.file={{ prom_dir }}/config/prometheus.yml \
+  --storage.tsdb.path={{ prom_dir }}/data \
+  --web.listen-address=:{{ prometheus_port }} \
+  --storage.tsdb.retention.time={{ prom_retention_time }} \
+  --storage.tsdb.retention.size={{ prom_retention_size }}
+WorkingDirectory={{ prom_dir }}
+Restart=on-failure
+NoNewPrivileges=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

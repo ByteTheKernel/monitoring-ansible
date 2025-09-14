@@ -1,0 +1,20 @@
+base_packages:
+  - curl
+  - gnupg
+  - tar
+  - systemd-timesyncd
+
+timesyncd_ntp_servers:
+  - ntp1.vniiftri.ru
+  - ntp2.vniiftri.ru
+  - ntp3.vniiftri.ru
+  - ntp4.vniiftri.ru
+  - ntp5.vniiftri.ru
+
+timesyncd_fallback_servers:
+  - 0.ru.pool.ntp.org
+  - 1.ru.pool.ntp.org
+  - 2.ru.pool.ntp.org
+  - 3.ru.pool.ntp.org
+  - time.cloudflare.com
+  - time.google.com

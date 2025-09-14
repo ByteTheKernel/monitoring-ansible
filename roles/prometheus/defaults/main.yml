@@ -1,0 +1,8 @@
+prom_user: prometheus_usr
+prom_dir: /srv/prometheus
+prometheus_port: 9090
+prometheus_version: "3.5.0"
+prometheus_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+
+prom_retention_time: "15d"
+prom_retention_size: "10GB"

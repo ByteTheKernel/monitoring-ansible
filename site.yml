@@ -1,0 +1,7 @@
+---
+- hosts: monitoring
+  roles:
+    - role: common
+    - role: node_exporter
+    - role: prometheus
+    - role: grafana

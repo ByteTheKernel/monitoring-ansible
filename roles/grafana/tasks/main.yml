@@ -1,0 +1,156 @@
+- name: Create service user
+  user:
+    name: "{{ grafana_user }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+  tags: [grafana]
+
+- name: Ensure work dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_user }}"
+    mode: "0755"
+  loop:
+    - "{{ grafana_dir }}"
+    - "{{ grafana_dir }}/data"
+    - "{{ grafana_dir }}/logs"
+    - "{{ grafana_dir }}/plugins"
+    - "{{ grafana_dir }}/provisioning"
+    - "{{ grafana_dir }}/provisioning/datasources"
+    - "{{ grafana_dir }}/provisioning/dashboards"
+    - "{{ grafana_dir }}/dashboards"
+  tags: [grafana]
+
+- name: Ensure keyrings dir
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  tags: [grafana]
+
+- name: Download grafana GPG (armored)
+  get_url:
+    url: https://packages.grafana.com/gpg.key
+    dest: /etc/apt/keyrings/grafana.asc
+    mode: "0644"
+  tags: [grafana]
+
+- name: Dearmor key
+  command: gpg --dearmor -o /etc/apt/keyrings/grafana.gpg /etc/apt/keyrings/grafana.asc
+  args: { creates: /etc/apt/keyrings/grafana.gpg }
+  tags: [grafana]
+
+- name: Remove armored key
+  file:
+    path: /etc/apt/keyrings/grafana.asc
+    state: absent
+  tags: [grafana]
+
+- name: Add Grafana repo
+  apt_repository:
+    repo: "{{ grafana_repo }}"
+    filename: grafana
+    state: present
+    update_cache: yes
+  tags: [grafana]
+
+- name: Install grafana
+  apt:
+    name: grafana
+    state: present
+  tags: [grafana]
+
+- name: Ensure /etc/grafana dir is readable by grafana user
+  file:
+    path: /etc/grafana
+    state: directory
+    owner: root
+    group: "{{ grafana_user }}"
+    mode: "0750"
+  tags: [grafana]
+
+- name: Ensure grafana.ini is group-readable by grafana_user
+  file:
+    path: /etc/grafana/grafana.ini
+    state: file
+    owner: root
+    group: "{{ grafana_user }}"
+    mode: "0640"
+  tags: [grafana]
+
+- name: Ensure provisioning dir is readable by grafana_user
+  file:
+    path: /etc/grafana/provisioning
+    state: directory
+    owner: root
+    group: "{{ grafana_user }}"
+    mode: "0750"
+  tags: [grafana]
+
+- name: Systemd override dir
+  file:
+    path: /etc/systemd/system/grafana-server.service.d
+    state: directory
+    mode: "0755"
+  tags: [grafana]
+
+- name: Install /etc/default/grafana-server
+  template:
+    src: grafana-default.j2
+    dest: /etc/default/grafana-server
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - systemd-daemon-reload
+    - restart grafana
+  tags: [grafana]
+
+
+- name: Provision datasource (Prometheus)
+  template:
+    src: datasources-prometheus.yml.j2
+    dest: "{{ grafana_dir }}/provisioning/datasources/prometheus.yml"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_user }}"
+    mode: "0644"
+  notify: restart grafana
+  tags: [grafana]
+
+- name: Provision dashboards root provider
+  template:
+    src: dashboards.yml.j2
+    dest: "{{ grafana_dir }}/provisioning/dashboards/dashboards.yml"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_user }}"
+    mode: "0644"
+  notify: restart grafana
+  tags: [grafana]
+
+- name: Download Node Exporter Full (1860) JSON
+  get_url:
+    url: "{{ node_exporter_full_url }}"
+    dest: "{{ node_exporter_full_json }}"
+    mode: "0644"
+  tags: [grafana]
+
+- name: Provision provider for 1860 (inputs mapping)
+  template:
+    src: node-exporter-full-1860.provider.yml.j2
+    dest: "{{ grafana_dir }}/provisioning/dashboards/node-exporter-full-1860.yml"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_user }}"
+    mode: "0644"
+  notify: restart grafana
+  tags: [grafana]
+
+- name: Ensure grafana-server is running
+  systemd:
+    name: grafana-server
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: [grafana]
