@@ -1,19 +1,23 @@
 # Python venv
-
-.venv/ venv/ ENV/
+.venv/
+venv/
+ENV/
 
 # Python cache
-
-**pycache**/ *.pyc *.pyo \*.pyd
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Ansible artifacts
-
-*.retry *.log
+*.retry
+*.log
 
 # OS files
-
-.DS_Store Thumbs.db
+.DS_Store
+Thumbs.db
 
 # IDE configs
-
-.vscode/ .idea/ \*.swp
+.vscode/
+.idea/
+*.swp
